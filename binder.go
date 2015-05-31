@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -39,12 +40,29 @@ type Binder struct {
 	Unbind func(output map[string]string, name string, val interface{})
 }
 
+// Add a regex possibility to routes
+func tryRegex(params *Params, name string) ([]string, bool) {
+	for key, vals := range params.Values {
+		if key[:len(name)] == name {
+			// parse regexp
+			re := key[len(name):]
+			if ok, err := regexp.MatchString(re, vals[0]); err == nil && ok {
+				return vals, true
+			}
+		}
+	}
+	return nil, false
+}
+
 // An adapter for easily making one-key-value binders.
 func ValueBinder(f func(value string, typ reflect.Type) reflect.Value) func(*Params, string, reflect.Type) reflect.Value {
 	return func(params *Params, name string, typ reflect.Type) reflect.Value {
 		vals, ok := params.Values[name]
 		if !ok || len(vals) == 0 {
-			return reflect.Zero(typ)
+			vals, ok = tryRegex(params, name)
+			if !ok || len(vals) == 0 {
+				return reflect.Zero(typ)
+			}
 		}
 		return f(vals[0], typ)
 	}

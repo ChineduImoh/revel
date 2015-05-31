@@ -40,7 +40,20 @@ type Binder struct {
 	Unbind func(output map[string]string, name string, val interface{})
 }
 
-// Add a regex possibility to routes
+// Add a regex possibility (for routes).
+// If regexp is matched, vals is returned.
+// If not, reflect.Zero(typ) is returned.
+//
+// Example
+//
+// Route:
+//  /:controller/:id[1-9]+
+//
+// Requests | calls:
+//  /Model/123/ | Bind(params, "id", int): 123
+//  /Model/ABC/ | Bind(params, "id", int): 0
+//  /Model/100/ | Bind(params, "id", int): 0
+//
 func tryRegex(params *Params, name string) ([]string, bool) {
 	for key, vals := range params.Values {
 		if key[:len(name)] == name {
